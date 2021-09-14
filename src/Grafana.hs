@@ -17,7 +17,9 @@ module Grafana
   , ColumnSort(..)
   , ColumnStyles(..)
   , Dashboard(..)
+  , Query(..)
   , GraphiteQuery(..)
+  , InfluxQuery(..)
   , Gauge(..)
   , Graph(..)
   , GridPos(..)
@@ -102,13 +104,13 @@ data Templating = Templating
   { templatingOptions :: NonEmpty Text
   , templatingName :: !Text
   , templatingLabel :: !Text
-  , templatingQuery :: !GraphiteQuery
+  , templatingQuery :: !Query
   , templatingAllValue :: !(Maybe Text)
   } deriving stock (Eq, Read, Show)
 
 instance ToJSON Templating where
   toJSON t = object $
-    [ "datasource" .= String "Graphite"
+    [ "datasource" .= String (queryDataSource (templatingQuery t))  
     , "includeAll" .= isJust (templatingAllValue t)
     , "type" .= String "query"
     , "regex" .= optionsRegex (templatingOptions t)
@@ -577,7 +579,7 @@ instance ToJSON Link where
       , "type" .= String "dashboards"
       ]
 
-makeTargets :: [GraphiteQuery] -> [Target]
+makeTargets :: [Query] -> [Target]
 makeTargets = zipWith
   (\refid query -> Target refid (serializeQuery query))
   refids
@@ -586,7 +588,7 @@ makeTargets = zipWith
 
 data Table = Table
   { tableTitle :: Text
-  , tableQueries :: [GraphiteQuery]
+  , tableQueries :: [Query]
   , tableColumns :: [Column]
   , tableSort :: Maybe ColumnSort
   , tableFontSize :: Int
@@ -625,7 +627,7 @@ instance ToJSON NullPointMode where
 
 data Graph = Graph
   { graphTitle :: Text
-  , graphQueries :: [GraphiteQuery]
+  , graphQueries :: [Query]
   , graphNullPointMode :: NullPointMode
   , graphUnit :: Maybe UnitFormat
   , graphHasBars :: Bool
@@ -658,7 +660,7 @@ instance ToJSON TextMode where
 
 data Singlestat = Singlestat
   { singlestatTitle :: Text
-  , singlestatQueries :: [GraphiteQuery]
+  , singlestatQueries :: [Query]
   , singlestatFontSize :: Int
   , singlestatUnit :: UnitFormat
   , singlestatColorBackground :: Bool
@@ -672,6 +674,17 @@ data Singlestat = Singlestat
 
 newtype Row = Row Text
 
+newtype InfluxQuery = InfluxQuery Text
+  deriving stock (Eq, Read, Show)
+
+queryDataSource :: Query -> Text
+queryDataSource (Graphite _) = "Graphite"
+queryDataSource (Influx _) = "InfluxDB"
+
+
+data Query = Graphite !GraphiteQuery | Influx !InfluxQuery
+  deriving stock (Eq, Read, Show)
+
 data GraphiteQuery
   = HighestCurrent GraphiteQuery !Int
   | AverageSeriesWithWildcards GraphiteQuery !Int
@@ -684,22 +697,30 @@ data GraphiteQuery
   | LiteralQuery !Text
   deriving stock (Eq, Read, Show)
 
-serializeQuery :: GraphiteQuery -> Text
-serializeQuery = \case
+
+serializeQuery :: Query -> Text
+serializeQuery (Graphite g) = serializeGraphite g
+serializeQuery (Influx i) = serializeInflux i
+
+serializeInflux :: InfluxQuery -> Text
+serializeInflux (InfluxQuery q) = q
+
+serializeGraphite :: GraphiteQuery -> Text
+serializeGraphite = \case
   HighestCurrent q n ->
-    "highestCurrent(" <> serializeQuery q <> "," <> tshow n <> ")"
+    "highestCurrent(" <> serializeGraphite q <> "," <> tshow n <> ")"
   AverageSeriesWithWildcards q n ->
-    "averageSeriesWithWildcards(" <> serializeQuery q <> "," <> tshow n <> ")"
+    "averageSeriesWithWildcards(" <> serializeGraphite q <> "," <> tshow n <> ")"
   AliasSub q a b ->
-    "aliasSub(" <> serializeQuery q <> ",'" <> a <> "','" <> b <> "')"
+    "aliasSub(" <> serializeGraphite q <> ",'" <> a <> "','" <> b <> "')"
   Alias q a ->
-    "alias(" <> serializeQuery q <> ",'" <> a <> "')"
+    "alias(" <> serializeGraphite q <> ",'" <> a <> "')"
   Avg q ->
-    "avg(" <> serializeQuery q <> ")"
+    "avg(" <> serializeGraphite q <> ")"
   Absolute q ->
-    "absolute(" <> serializeQuery q <> ")"
+    "absolute(" <> serializeGraphite q <> ")"
   Offset q n ->
-    "offset(" <> serializeQuery q <> "," <> tshow n <> ")"
+    "offset(" <> serializeGraphite q <> "," <> tshow n <> ")"
   Metric xs ->
     T.intercalate "." (serializePathComponent . fmap stripInvalidChars <$> xs)
   LiteralQuery t ->

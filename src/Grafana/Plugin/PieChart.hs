@@ -22,7 +22,7 @@ instance ToJSON PieType where
 
 data PieChart = PieChart
   { pieChartTitle :: Text
-  , pieChartQueries :: [GraphiteQuery]
+  , pieChartQueries :: [Query]
   , pieChartUnit :: Maybe UnitFormat
   , pieChartAliasColors :: Map Text RGBA
   , pieType :: PieType

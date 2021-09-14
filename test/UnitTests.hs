@@ -31,8 +31,8 @@ unitTests = testGroup "Unit tests"
 
 makeTargetsDistinctRefids :: Assertion
 makeTargetsDistinctRefids =
-  let query1 = Metric [Literal "a", Literal "b", Literal "c"]
-      query2 = Metric [Literal "d", Literal "e", Literal "f"]
+  let query1 = Graphite $ Metric [Literal "a", Literal "b", Literal "c"]
+      query2 = Graphite $ Metric [Literal "d", Literal "e", Literal "f"]
       targets = makeTargets [query1, query2]
   in  distinctOn refId targets @? "Non-distinct refids"
 
@@ -53,17 +53,17 @@ graphiteQuerySerialize = testGroup "graphite queries are serialized properly"
 
 serializeAlias :: Assertion
 serializeAlias =
-  let query = Alias (Metric [Anything, Anything, Anything]) "Something else"
+  let query = Graphite $ Alias (Metric [Anything, Anything, Anything]) "Something else"
   in  serializeQuery query @?= "alias(*.*.*,'Something else')"
 
 serializeAliasSub :: Assertion
 serializeAliasSub =
-  let query = AliasSub (Metric [Anything, Anything, Anything]) "X" "Y"
+  let query = Graphite $ AliasSub (Metric [Anything, Anything, Anything]) "X" "Y"
   in  serializeQuery query @?= "aliasSub(*.*.*,'X','Y')"
 
 serializeEscapesBadChars :: Assertion
 serializeEscapesBadChars =
-  let query = Metric [Literal "minipops 67 [120.2][source field mix]"]
+  let query = Graphite $ Metric [Literal "minipops 67 [120.2][source field mix]"]
   in  serializeQuery query @?= "minipops671202sourcefieldmix"
 
 panelSerialize :: TestTree
@@ -87,10 +87,10 @@ defGridPosJSON =
     , "y" .= Number 0
     ]
 
-defQueries :: [GraphiteQuery]
+defQueries :: [Query]
 defQueries =
-  [ Metric [Anything, Anything, Anything]
-  , Metric [Anything, Anything, Anything]
+  [ Graphite $ Metric [Anything, Anything, Anything]
+  , Graphite $ Metric [Anything, Anything, Anything]
   ]
 
 defQueriesJSON :: [Value]
