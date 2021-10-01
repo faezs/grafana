@@ -417,6 +417,9 @@ graph (Graph {..}) =
   , "bars" .= graphHasBars
   , "steppedLine" .= graphHasSteppedLine
   ]
+  <> case (length graphQueries > 0) of
+       True -> [ "datasource" .= (queryDataSource . head $ graphQueries) ] 
+       False -> []
   <> case graphUnit of
        Nothing -> []
        Just su ->
@@ -439,7 +442,7 @@ graph (Graph {..}) =
                ]
            ]
          ]
-
+  
 rowPanel :: Row -> GridPos -> Panel
 rowPanel = Panel . row
 
